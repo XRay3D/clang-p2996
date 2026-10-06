@@ -418,15 +418,31 @@ consteval const CharT *define_encoded_static_string(R &&r);
 
 */
 
-#include <__config>
+// This header is also shipped in the Clang resource directory for use with
+// libstdc++ (see clang/lib/Headers/CMakeLists.txt), so it cannot assume libc++.
+#include <version>
+
+#if defined(_LIBCPP_VERSION)
+#  include <__config>
+#  include <__ranges/access.h>
+#  include <__ranges/concepts.h>
+#  include <__ranges/size.h>
+#else
+#  include <charconv>
+#  include <ranges>
+
+#  define _LIBCPP_META_FOREIGN_STDLIB
+#  define _LIBCPP_BEGIN_NAMESPACE_STD namespace std {
+#  define _LIBCPP_END_NAMESPACE_STD }
+#  define _LIBCPP_BEGIN_NAMESPACE_REFLECTION_V2                                \
+     namespace std { namespace meta { inline namespace reflection_v2 {
+#  define _LIBCPP_END_NAMESPACE_REFLECTION_V2 } } }
+#endif
+
 #include <bit>
+#include <climits>
 #include <initializer_list>
 #include <optional>
-
-#include <__ranges/access.h>
-#include <__ranges/concepts.h>
-#include <__ranges/size.h>
-
 #include <source_location>
 #include <span>
 #include <string>
@@ -434,6 +450,28 @@ consteval const CharT *define_encoded_static_string(R &&r);
 #include <type_traits>
 #include <variant>
 #include <vector>
+
+#if defined(_LIBCPP_META_FOREIGN_STDLIB)
+
+_LIBCPP_BEGIN_NAMESPACE_STD
+
+// libc++ provides these from <type_traits>.
+template <class _Tp>
+struct is_consteval_only : bool_constant<__is_consteval_only(_Tp)> {};
+
+template <class _Tp>
+inline constexpr bool is_consteval_only_v = __is_consteval_only(_Tp);
+
+_LIBCPP_END_NAMESPACE_STD
+
+// libstdc++ instantiates the 'basic_string(const CharT*, size_type)'
+// constructor from 'operator""s', before 'basic_string::_M_construct' is
+// defined, which leaves the latter unusable in constant expressions until
+// something else references it (llvm/llvm-project#73232). Do that here, since
+// 'data_member_spec' and friends build strings during constant evaluation.
+static_assert(std::string("").empty() && std::u8string(u8"").empty());
+
+#endif // _LIBCPP_META_FOREIGN_STDLIB
 
 #if __has_feature(reflection)
 
@@ -3445,5 +3483,13 @@ consteval auto u8display_string_of(info R) -> u8string_view {
 _LIBCPP_END_NAMESPACE_REFLECTION_V2
 
 #endif  // __has_feature(reflection)
+
+#if defined(_LIBCPP_META_FOREIGN_STDLIB)
+#  undef _LIBCPP_BEGIN_NAMESPACE_STD
+#  undef _LIBCPP_END_NAMESPACE_STD
+#  undef _LIBCPP_BEGIN_NAMESPACE_REFLECTION_V2
+#  undef _LIBCPP_END_NAMESPACE_REFLECTION_V2
+#  undef _LIBCPP_META_FOREIGN_STDLIB
+#endif
 
 #endif  // _LIBCPP_META

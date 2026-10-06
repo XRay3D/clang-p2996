@@ -448,6 +448,25 @@ foreach( f ${files} ${cuda_wrapper_files} ${cuda_wrapper_bits_files}
   copy_header_to_output_dir(${CMAKE_CURRENT_SOURCE_DIR} ${f})
 endforeach( f )
 
+# libstdc++ has no <meta> that this compiler can use, so ship libc++'s one
+# (which is written to work with both libraries) for the driver to put ahead of
+# the libstdc++ headers when reflection is enabled.
+set(libstdcxx_wrapper_src_dir ${CLANG_SOURCE_DIR}/../libcxx/include)
+set(libstdcxx_wrapper_files)
+if(EXISTS ${libstdcxx_wrapper_src_dir}/meta)
+  set(libstdcxx_wrapper_files meta experimental/meta)
+endif()
+
+function(copy_libstdcxx_wrapper_to_output_dir file)
+  set(output_dir ${output_dir}/libstdcxx_wrappers)
+  copy_header_to_output_dir(${libstdcxx_wrapper_src_dir} ${file})
+  set(out_files ${out_files} PARENT_SCOPE)
+endfunction()
+
+foreach( f ${libstdcxx_wrapper_files} )
+  copy_libstdcxx_wrapper_to_output_dir(${f})
+endforeach( f )
+
 # Generate header files and copy them to the build directory
 if(ARM IN_LIST LLVM_TARGETS_TO_BUILD OR AArch64 IN_LIST LLVM_TARGETS_TO_BUILD)
   # Generate arm_neon.h
@@ -614,6 +633,14 @@ install(
   FILES ${openmp_wrapper_files}
   DESTINATION ${header_install_dir}/openmp_wrappers
   COMPONENT clang-resource-headers)
+
+foreach( f ${libstdcxx_wrapper_files} )
+  get_filename_component(libstdcxx_wrapper_subdir ${f} DIRECTORY)
+  install(
+    FILES ${libstdcxx_wrapper_src_dir}/${f}
+    DESTINATION ${header_install_dir}/libstdcxx_wrappers/${libstdcxx_wrapper_subdir}
+    COMPONENT clang-resource-headers)
+endforeach( f )
 
 install(
   FILES ${llvm_offload_wrapper_files}

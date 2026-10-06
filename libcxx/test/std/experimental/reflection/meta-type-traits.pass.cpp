@@ -17,6 +17,8 @@
 
 #include <meta>
 
+#include <cstddef>
+
 
 struct C {};
 struct Child : C {};
@@ -38,7 +40,7 @@ class VDtor { virtual ~VDtor() {} };
 int fn(bool, char) noexcept { return 0; }
 
 static_assert(is_void_type(^^void));
-static_assert(is_null_pointer_type(^^nullptr_t));
+static_assert(is_null_pointer_type(^^std::nullptr_t));
 static_assert(is_integral_type(^^int));
 static_assert(is_floating_point_type(^^float));
 static_assert(is_array_type(^^int[]));

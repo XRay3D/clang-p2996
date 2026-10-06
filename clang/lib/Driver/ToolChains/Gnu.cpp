@@ -3157,6 +3157,19 @@ void Generic_GCC::AddClangCXXStdlibIncludeArgs(const ArgList &DriverArgs,
     break;
 
   case ToolChain::CST_Libstdcxx:
+    // libstdc++ has no <meta> that works with our reflection intrinsics (the
+    // one it may ship is specific to GCC), so let the header from the resource
+    // directory take precedence.
+    if (DriverArgs.hasFlag(options::OPT_freflection,
+                           options::OPT_fno_reflection, false) ||
+        DriverArgs.hasFlag(options::OPT_freflection_latest,
+                           options::OPT_fno_reflection_latest, false)) {
+      if (!DriverArgs.hasArg(options::OPT_nobuiltininc)) {
+        SmallString<128> P(getDriver().ResourceDir);
+        llvm::sys::path::append(P, "include", "libstdcxx_wrappers");
+        addSystemInclude(DriverArgs, CC1Args, P);
+      }
+    }
     addLibStdCxxIncludePaths(DriverArgs, CC1Args);
     break;
   }
